@@ -116,6 +116,71 @@ local function setLuckyArrowAmountToTen()
     print("Item found but no amount value detected")
 end
 
+local function isValueObject(obj)
+    return obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") or obj:IsA("BoolValue")
+end
+
+local function printAttrs(obj)
+    for k, v in pairs(obj:GetAttributes()) do
+        print(("  [Attr] %s = %s"):format(k, tostring(v)))
+    end
+end
+
+local function dumpNearby(obj)
+    print("MATCH:", obj:GetFullName(), "|", obj.ClassName)
+    if isValueObject(obj) then
+        print("  [Value]", obj.Name, "=", tostring(obj.Value))
+    end
+    printAttrs(obj)
+
+    local parent = obj.Parent
+    if parent then
+        print("  -- Parent children --")
+        for _, c in ipairs(parent:GetChildren()) do
+            if isValueObject(c) then
+                print(("    %s (%s) = %s"):format(c.Name, c.ClassName, tostring(c.Value)))
+            else
+                local attrs = c:GetAttributes()
+                if next(attrs) ~= nil then
+                    print(("    %s (%s) has attributes"):format(c.Name, c.ClassName))
+                    for ak, av in pairs(attrs) do
+                        print(("      %s = %s"):format(ak, tostring(av)))
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function debugLuckyArrowScrape()
+    local roots = {
+        player,
+        player:FindFirstChild("PlayerGui"),
+        player:FindFirstChild("Backpack"),
+        player.Character,
+    }
+
+    local seen = {}
+    local totalMatches = 0
+
+    for _, root in ipairs(roots) do
+        if root then
+            for _, obj in ipairs(root:GetDescendants()) do
+                local n = string.lower(obj.Name)
+                if n:find("lucky") or n:find("arrow") or n:find("item") or n:find("inventory") then
+                    if not seen[obj] then
+                        seen[obj] = true
+                        totalMatches += 1
+                        dumpNearby(obj)
+                    end
+                end
+            end
+        end
+    end
+
+    print("Lucky Arrow debug scan complete. Matches:", totalMatches)
+end
+
 local function ensureFlyForces(humanoid, hrp)
     if humanoid then
         humanoid.PlatformStand = true
@@ -333,6 +398,13 @@ MainTab:CreateButton({
     Name = "Set Lucky Arrow Amount To 10",
     Callback = function()
         setLuckyArrowAmountToTen()
+    end,
+})
+
+MainTab:CreateButton({
+    Name = "Debug Lucky Arrow Scan",
+    Callback = function()
+        debugLuckyArrowScrape()
     end,
 })
 
