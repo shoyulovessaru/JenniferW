@@ -1,84 +1,138 @@
 -- load rayfield
-local Rayfield = loadstring(game('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
-local Players = game("Players")
-local UIS = game("UserInputService")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
 local speedValue = 16
 local speedEnabled = false
+local executeStart = os.clock()
 
 -- window
-local Window = Rayfield({
-Name = "JenniferW v1.3",
-LoadingTitle = "JenniferW v1.3",
-LoadingSubtitle = "by Shoya",
-ConfigurationSaving = {Enabled = false}
+local Window = Rayfield:CreateWindow({
+    Name = "JenniferW v1.3",
+    LoadingTitle = "JenniferW v1.3",
+    LoadingSubtitle = "by Shoya",
+    ConfigurationSaving = {
+        Enabled = false,
+    },
 })
 
 -- tabs
-local MainTab = Window("Main", 4483362458)
-local SettingsTab = Window("Settings", 4483362458)
-local InfoTab = Window("Info", 4483362458)
+local MainTab = Window:CreateTab("Main", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+local InfoTab = Window:CreateTab("Info", 4483362458)
 
 -- notification
-Rayfield({
-Title = "JenniferW V1.2",
-Content = "Loaded!",
-Duration = 4
+Rayfield:Notify({
+    Title = "JenniferW v1.3",
+    Content = "Loaded!",
+    Duration = 4,
 })
 
 -- MAIN TAB
 
-MainTab("Player")
+MainTab:CreateSection("Player")
 
-MainTab({
-Name = "WalkSpeed Value",
-PlaceholderText = "Example: 50",
-RemoveTextAfterFocusLost = false,
-Callback = function(text)
-local num = tonumber(text)
-if num then
-speedValue = num
-end
-end
+MainTab:CreateInput({
+    Name = "WalkSpeed Value",
+    PlaceholderText = "Example: 50",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then
+            speedValue = num
+        end
+    end,
 })
 
-MainTab({
-Name = "Enable WalkSpeed",
-CurrentValue = false,
-Callback = function(state)
-speedEnabled = state
-end
+MainTab:CreateToggle({
+    Name = "Enable WalkSpeed",
+    CurrentValue = false,
+    Flag = "WalkSpeedToggle",
+    Callback = function(state)
+        speedEnabled = state
+    end,
 })
 
 -- enforce speed
 task.spawn(function()
-while true do
-task.wait(0.1)
-if speedEnabled then
-local char = player.Character
-if char and char("Humanoid") then
-char.Humanoid.WalkSpeed = speedValue
-end
-end
-end
+    while true do
+        task.wait(0.1)
+        if speedEnabled then
+            local char = player.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = speedValue
+            end
+        end
+    end
 end)
 
 -- SETTINGS TAB
 
-SettingsTab({
-Name = "Unload Hub",
-Callback = function()
-Rayfield()
-end
+SettingsTab:CreateButton({
+    Name = "Unload Hub",
+    Callback = function()
+        Rayfield:Destroy()
+    end,
 })
+
+-- INFO TAB
+InfoTab:CreateSection("Player Info")
+
+InfoTab:CreateParagraph({
+    Title = "Username",
+    Content = string.format("%s (@%s)", player.DisplayName, player.Name),
+})
+
+local avatarPngUrl = string.format(
+    "https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420&format=png",
+    player.UserId
+)
+
+InfoTab:CreateParagraph({
+    Title = "Roblox Avatar PNG",
+    Content = avatarPngUrl,
+})
+
+local stopwatchParagraph = InfoTab:CreateParagraph({
+    Title = "Executed For",
+    Content = "00:00:00",
+})
+
+InfoTab:CreateParagraph({
+    Title = "JenniferW v1.3",
+    Content = "UI toggle key: 0",
+})
+
+local function formatElapsed(seconds)
+    local total = math.floor(seconds)
+    local hours = math.floor(total / 3600)
+    local minutes = math.floor((total % 3600) / 60)
+    local secs = total % 60
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        stopwatchParagraph:Set({
+            Title = "Executed For",
+            Content = formatElapsed(os.clock() - executeStart),
+        })
+    end
+end)
 
 -- UI TOGGLE
 
-UIS.InputBegan(function(input, gp)
-if input.KeyCode == Enum.KeyCode.Zero then
-Rayfield()
-end
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then
+        return
+    end
+    if input.KeyCode == Enum.KeyCode.Zero then
+        Rayfield:Toggle()
+    end
 end)
