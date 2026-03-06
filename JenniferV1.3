@@ -35,17 +35,29 @@ local amountFieldNames = {
     Amount = true,
     Uses = true,
     Count = true,
+    Quantity = true,
+    Stack = true,
 }
 
-local function findLuckyArrowTool()
-    local backpack = player:FindFirstChild("Backpack")
-    local containers = { backpack, player.Character }
+local function findLuckyArrowInstance()
+    local containers = {
+        player:FindFirstChild("Backpack"),
+        player.Character,
+        player:FindFirstChild("PlayerGui"),
+        player:FindFirstChild("Data"),
+        player:FindFirstChild("Inventory"),
+    }
+
+    local function nameMatch(n)
+        return string.lower((n or "")):gsub("%s+", "") == "luckyarrow"
+    end
 
     for _, container in ipairs(containers) do
         if container then
-            local tool = container:FindFirstChild("Lucky Arrow")
-            if tool and tool:IsA("Tool") then
-                return tool
+            for _, obj in ipairs(container:GetDescendants()) do
+                if nameMatch(obj.Name) then
+                    return obj
+                end
             end
         end
     end
@@ -53,21 +65,21 @@ local function findLuckyArrowTool()
     return nil
 end
 
-local function findAmountHolder(tool)
-    for _, child in ipairs(tool:GetDescendants()) do
+local function findAmountHolder(item)
+    for _, child in ipairs(item:GetDescendants()) do
         if (child:IsA("IntValue") or child:IsA("NumberValue")) and amountFieldNames[child.Name] then
             return "value", child
         end
     end
 
-    for _, child in ipairs(tool:GetDescendants()) do
+    for _, child in ipairs(item:GetDescendants()) do
         if child:IsA("IntValue") or child:IsA("NumberValue") then
             return "value", child
         end
     end
 
     for name, _ in pairs(amountFieldNames) do
-        local attr = tool:GetAttribute(name)
+        local attr = item:GetAttribute(name)
         if typeof(attr) == "number" then
             return "attribute", name
         end
@@ -77,15 +89,15 @@ local function findAmountHolder(tool)
 end
 
 local function setLuckyArrowAmountToTen()
-    local tool = findLuckyArrowTool()
-    if not tool then
-        print("Lucky Arrow not found in Backpack or Character")
+    local item = findLuckyArrowInstance()
+    if not item then
+        print("Lucky Arrow not found in Backpack/Character/PlayerGui/Data/Inventory")
         return
     end
 
-    print("Lucky Arrow path:", tool:GetFullName())
+    print("Lucky Arrow path:", item:GetFullName(), "| Class:", item.ClassName)
 
-    local holderType, holder = findAmountHolder(tool)
+    local holderType, holder = findAmountHolder(item)
     if holderType == "value" and holder then
         print("Current amount:", holder.Value)
         holder.Value = 10
@@ -94,10 +106,10 @@ local function setLuckyArrowAmountToTen()
     end
 
     if holderType == "attribute" and holder then
-        local current = tool:GetAttribute(holder)
+        local current = item:GetAttribute(holder)
         print("Current amount:", current)
-        tool:SetAttribute(holder, 10)
-        print("New amount:", tool:GetAttribute(holder))
+        item:SetAttribute(holder, 10)
+        print("New amount:", item:GetAttribute(holder))
         return
     end
 
