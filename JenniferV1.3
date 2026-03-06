@@ -14,6 +14,7 @@ local isUiVisible = true
 local avatarGui
 local avatarFrame
 local avatarTimer
+local avatarPing
 
 -- window
 local Window = Rayfield:CreateWindow({
@@ -151,20 +152,20 @@ local avatarCorner = Instance.new("UICorner")
 avatarCorner.CornerRadius = UDim.new(0, 10)
 avatarCorner.Parent = avatarFrame
 
-local avatarTitle = Instance.new("TextLabel")
-avatarTitle.Size = UDim2.new(1, -16, 0, 24)
-avatarTitle.Position = UDim2.new(0, 8, 0, 8)
-avatarTitle.BackgroundTransparency = 1
-avatarTitle.Text = "Avatar Preview"
-avatarTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-avatarTitle.TextSize = 15
-avatarTitle.Font = Enum.Font.GothamBold
-avatarTitle.TextXAlignment = Enum.TextXAlignment.Left
-avatarTitle.Parent = avatarFrame
+local avatarStatus = Instance.new("TextLabel")
+avatarStatus.Size = UDim2.new(1, -16, 0, 20)
+avatarStatus.Position = UDim2.new(0, 8, 0, 8)
+avatarStatus.BackgroundTransparency = 1
+avatarStatus.Text = "Connected"
+avatarStatus.TextColor3 = Color3.fromRGB(80, 255, 120)
+avatarStatus.TextSize = 14
+avatarStatus.Font = Enum.Font.GothamBold
+avatarStatus.TextXAlignment = Enum.TextXAlignment.Right
+avatarStatus.Parent = avatarFrame
 
 local avatarImage = Instance.new("ImageLabel")
 avatarImage.Size = UDim2.new(0, 150, 0, 150)
-avatarImage.Position = UDim2.new(0.5, -75, 0, 38)
+avatarImage.Position = UDim2.new(0.5, -75, 0, 32)
 avatarImage.BackgroundTransparency = 1
 avatarImage.Image = avatarContent
 avatarImage.Parent = avatarFrame
@@ -175,7 +176,7 @@ imageCorner.Parent = avatarImage
 
 local avatarUser = Instance.new("TextLabel")
 avatarUser.Size = UDim2.new(1, -16, 0, 20)
-avatarUser.Position = UDim2.new(0, 8, 0, 194)
+avatarUser.Position = UDim2.new(0, 8, 0, 188)
 avatarUser.BackgroundTransparency = 1
 avatarUser.Text = string.format("%s (@%s)", player.DisplayName, player.Name)
 avatarUser.TextColor3 = Color3.fromRGB(220, 220, 220)
@@ -184,9 +185,20 @@ avatarUser.Font = Enum.Font.Gotham
 avatarUser.TextWrapped = true
 avatarUser.Parent = avatarFrame
 
+avatarPing = Instance.new("TextLabel")
+avatarPing.Size = UDim2.new(1, -16, 0, 20)
+avatarPing.Position = UDim2.new(0, 8, 0, 210)
+avatarPing.BackgroundTransparency = 1
+avatarPing.Text = "Ping: ..."
+avatarPing.TextColor3 = Color3.fromRGB(120, 220, 255)
+avatarPing.TextSize = 13
+avatarPing.Font = Enum.Font.GothamSemibold
+avatarPing.TextXAlignment = Enum.TextXAlignment.Left
+avatarPing.Parent = avatarFrame
+
 avatarTimer = Instance.new("TextLabel")
 avatarTimer.Size = UDim2.new(1, -16, 0, 20)
-avatarTimer.Position = UDim2.new(0, 8, 0, 220)
+avatarTimer.Position = UDim2.new(0, 8, 0, 228)
 avatarTimer.BackgroundTransparency = 1
 avatarTimer.Text = "Executed: 00:00:00"
 avatarTimer.TextColor3 = Color3.fromRGB(170, 255, 170)
@@ -237,6 +249,12 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 task.spawn(function()
+    local Stats = game:GetService("Stats")
+    local dataPingItem = nil
+    pcall(function()
+        dataPingItem = Stats.Network.ServerStatsItem["Data Ping"]
+    end)
+
     while true do
         task.wait(1)
         local elapsed = formatElapsed(os.clock() - executeStart)
@@ -246,6 +264,18 @@ task.spawn(function()
         })
         if avatarTimer and avatarTimer.Parent then
             avatarTimer.Text = "Executed: " .. elapsed
+        end
+        if avatarPing and avatarPing.Parent then
+            local pingText = "Ping: N/A"
+            if dataPingItem then
+                local ok, value = pcall(function()
+                    return dataPingItem:GetValueString()
+                end)
+                if ok and value then
+                    pingText = "Ping: " .. value
+                end
+            end
+            avatarPing.Text = pingText
         end
     end
 end)
