@@ -31,11 +31,41 @@ local flyKeys = {
     Ctrl = false,
 }
 
+local function ensureFlyForces(humanoid, hrp)
+    if humanoid then
+        humanoid.PlatformStand = true
+        humanoid.AutoRotate = false
+        humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    end
+
+    if not flyGyro or flyGyro.Parent ~= hrp then
+        if flyGyro then
+            flyGyro:Destroy()
+        end
+        flyGyro = Instance.new("BodyGyro")
+        flyGyro.P = 9e4
+        flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        flyGyro.CFrame = hrp.CFrame
+        flyGyro.Parent = hrp
+    end
+
+    if not flyVelocity or flyVelocity.Parent ~= hrp then
+        if flyVelocity then
+            flyVelocity:Destroy()
+        end
+        flyVelocity = Instance.new("BodyVelocity")
+        flyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyVelocity.Velocity = Vector3.zero
+        flyVelocity.Parent = hrp
+    end
+end
+
 local function stopFly()
     local char = player.Character
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.PlatformStand = false
+        humanoid.AutoRotate = true
     end
     if flyConnection then
         flyConnection:Disconnect()
@@ -63,18 +93,7 @@ local function startFly()
         return
     end
 
-    humanoid.PlatformStand = true
-
-    flyGyro = Instance.new("BodyGyro")
-    flyGyro.P = 9e4
-    flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyGyro.CFrame = hrp.CFrame
-    flyGyro.Parent = hrp
-
-    flyVelocity = Instance.new("BodyVelocity")
-    flyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    flyVelocity.Velocity = Vector3.zero
-    flyVelocity.Parent = hrp
+    ensureFlyForces(humanoid, hrp)
 
     flyConnection = RunService.RenderStepped:Connect(function()
         if not flyEnabled then
@@ -84,7 +103,7 @@ local function startFly()
         local currentChar = player.Character
         local currentHumanoid = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
         local currentHrp = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-        if not currentHumanoid or not currentHrp or not flyVelocity or not flyGyro then
+        if not currentHumanoid or not currentHrp then
             stopFly()
             return
         end
@@ -93,6 +112,8 @@ local function startFly()
         if not cam then
             return
         end
+
+        ensureFlyForces(currentHumanoid, currentHrp)
 
         local moveVector = Vector3.zero
         if flyKeys.W then
