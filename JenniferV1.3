@@ -31,6 +31,79 @@ local flyKeys = {
     Ctrl = false,
 }
 
+local amountFieldNames = {
+    Amount = true,
+    Uses = true,
+    Count = true,
+}
+
+local function findLuckyArrowTool()
+    local backpack = player:FindFirstChild("Backpack")
+    local containers = { backpack, player.Character }
+
+    for _, container in ipairs(containers) do
+        if container then
+            local tool = container:FindFirstChild("Lucky Arrow")
+            if tool and tool:IsA("Tool") then
+                return tool
+            end
+        end
+    end
+
+    return nil
+end
+
+local function findAmountHolder(tool)
+    for _, child in ipairs(tool:GetDescendants()) do
+        if (child:IsA("IntValue") or child:IsA("NumberValue")) and amountFieldNames[child.Name] then
+            return "value", child
+        end
+    end
+
+    for _, child in ipairs(tool:GetDescendants()) do
+        if child:IsA("IntValue") or child:IsA("NumberValue") then
+            return "value", child
+        end
+    end
+
+    for name, _ in pairs(amountFieldNames) do
+        local attr = tool:GetAttribute(name)
+        if typeof(attr) == "number" then
+            return "attribute", name
+        end
+    end
+
+    return nil, nil
+end
+
+local function setLuckyArrowAmountToTen()
+    local tool = findLuckyArrowTool()
+    if not tool then
+        print("Lucky Arrow not found in Backpack or Character")
+        return
+    end
+
+    print("Lucky Arrow path:", tool:GetFullName())
+
+    local holderType, holder = findAmountHolder(tool)
+    if holderType == "value" and holder then
+        print("Current amount:", holder.Value)
+        holder.Value = 10
+        print("New amount:", holder.Value)
+        return
+    end
+
+    if holderType == "attribute" and holder then
+        local current = tool:GetAttribute(holder)
+        print("Current amount:", current)
+        tool:SetAttribute(holder, 10)
+        print("New amount:", tool:GetAttribute(holder))
+        return
+    end
+
+    print("Item found but no amount value detected")
+end
+
 local function ensureFlyForces(humanoid, hrp)
     if humanoid then
         humanoid.PlatformStand = true
@@ -63,9 +136,20 @@ end
 local function stopFly()
     local char = player.Character
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if humanoid then
         humanoid.PlatformStand = false
         humanoid.AutoRotate = true
+        humanoid.Sit = false
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        task.defer(function()
+            if humanoid and humanoid.Parent then
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end)
+    end
+    if hrp then
+        hrp.AssemblyAngularVelocity = Vector3.zero
     end
     if flyConnection then
         flyConnection:Disconnect()
@@ -79,6 +163,12 @@ local function stopFly()
         flyGyro:Destroy()
         flyGyro = nil
     end
+    flyKeys.W = false
+    flyKeys.A = false
+    flyKeys.S = false
+    flyKeys.D = false
+    flyKeys.Space = false
+    flyKeys.Ctrl = false
 end
 
 local function startFly()
@@ -222,6 +312,15 @@ MainTab:CreateToggle({
         else
             stopFly()
         end
+    end,
+})
+
+MainTab:CreateSection("Misc")
+
+MainTab:CreateButton({
+    Name = "Set Lucky Arrow Amount To 10",
+    Callback = function()
+        setLuckyArrowAmountToTen()
     end,
 })
 
