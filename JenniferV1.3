@@ -3,12 +3,17 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 
 local speedValue = 16
 local speedEnabled = false
 local executeStart = os.clock()
+local isUiVisible = true
+local avatarGui
+local avatarFrame
+local avatarTimer
 
 -- window
 local Window = Rayfield:CreateWindow({
@@ -77,6 +82,9 @@ SettingsTab:CreateButton({
     Name = "Unload Hub",
     Callback = function()
         Rayfield:Destroy()
+        if avatarGui then
+            avatarGui:Destroy()
+        end
     end,
 })
 
@@ -94,27 +102,9 @@ local avatarContent, avatarReady = Players:GetUserThumbnailAsync(
     Enum.ThumbnailSize.Size420x420
 )
 
-local avatarShown = false
-local avatarLabelOk, avatarLabel = pcall(function()
-    return InfoTab:CreateLabel("Roblox Avatar", avatarContent)
-end)
-
-if avatarLabelOk and avatarLabel then
-    avatarShown = true
-else
-    local avatarPngUrl = string.format(
-        "https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420&format=png",
-        player.UserId
-    )
-    InfoTab:CreateParagraph({
-        Title = "Roblox Avatar PNG",
-        Content = avatarPngUrl,
-    })
-end
-
 InfoTab:CreateParagraph({
     Title = "Avatar Status",
-    Content = avatarShown and (avatarReady and "Loaded" or "Loading") or "Fallback URL mode",
+    Content = avatarReady and "Loaded (custom panel)" or "Loading (custom panel)",
 })
 
 local stopwatchParagraph = InfoTab:CreateParagraph({
@@ -135,13 +125,86 @@ local function formatElapsed(seconds)
     return string.format("%02d:%02d:%02d", hours, minutes, secs)
 end
 
+-- custom avatar panel (actual image)
+local uiParent = CoreGui
+pcall(function()
+    if gethui then
+        uiParent = gethui()
+    end
+end)
+
+avatarGui = Instance.new("ScreenGui")
+avatarGui.Name = "JenniferAvatarGui"
+avatarGui.ResetOnSpawn = false
+avatarGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+avatarGui.Parent = uiParent
+
+avatarFrame = Instance.new("Frame")
+avatarFrame.Name = "AvatarFrame"
+avatarFrame.Size = UDim2.new(0, 190, 0, 250)
+avatarFrame.Position = UDim2.new(1, -210, 0, 90)
+avatarFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+avatarFrame.BorderSizePixel = 0
+avatarFrame.Parent = avatarGui
+
+local avatarCorner = Instance.new("UICorner")
+avatarCorner.CornerRadius = UDim.new(0, 10)
+avatarCorner.Parent = avatarFrame
+
+local avatarTitle = Instance.new("TextLabel")
+avatarTitle.Size = UDim2.new(1, -16, 0, 24)
+avatarTitle.Position = UDim2.new(0, 8, 0, 8)
+avatarTitle.BackgroundTransparency = 1
+avatarTitle.Text = "Avatar Preview"
+avatarTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+avatarTitle.TextSize = 15
+avatarTitle.Font = Enum.Font.GothamBold
+avatarTitle.TextXAlignment = Enum.TextXAlignment.Left
+avatarTitle.Parent = avatarFrame
+
+local avatarImage = Instance.new("ImageLabel")
+avatarImage.Size = UDim2.new(0, 150, 0, 150)
+avatarImage.Position = UDim2.new(0.5, -75, 0, 38)
+avatarImage.BackgroundTransparency = 1
+avatarImage.Image = avatarContent
+avatarImage.Parent = avatarFrame
+
+local imageCorner = Instance.new("UICorner")
+imageCorner.CornerRadius = UDim.new(1, 0)
+imageCorner.Parent = avatarImage
+
+local avatarUser = Instance.new("TextLabel")
+avatarUser.Size = UDim2.new(1, -16, 0, 20)
+avatarUser.Position = UDim2.new(0, 8, 0, 194)
+avatarUser.BackgroundTransparency = 1
+avatarUser.Text = string.format("%s (@%s)", player.DisplayName, player.Name)
+avatarUser.TextColor3 = Color3.fromRGB(220, 220, 220)
+avatarUser.TextSize = 13
+avatarUser.Font = Enum.Font.Gotham
+avatarUser.TextWrapped = true
+avatarUser.Parent = avatarFrame
+
+avatarTimer = Instance.new("TextLabel")
+avatarTimer.Size = UDim2.new(1, -16, 0, 20)
+avatarTimer.Position = UDim2.new(0, 8, 0, 220)
+avatarTimer.BackgroundTransparency = 1
+avatarTimer.Text = "Executed: 00:00:00"
+avatarTimer.TextColor3 = Color3.fromRGB(170, 255, 170)
+avatarTimer.TextSize = 13
+avatarTimer.Font = Enum.Font.GothamSemibold
+avatarTimer.Parent = avatarFrame
+
 task.spawn(function()
     while true do
         task.wait(1)
+        local elapsed = formatElapsed(os.clock() - executeStart)
         stopwatchParagraph:Set({
             Title = "Executed For",
-            Content = formatElapsed(os.clock() - executeStart),
+            Content = elapsed,
         })
+        if avatarTimer and avatarTimer.Parent then
+            avatarTimer.Text = "Executed: " .. elapsed
+        end
     end
 end)
 
@@ -153,5 +216,9 @@ UIS.InputBegan:Connect(function(input, gp)
     end
     if input.KeyCode == Enum.KeyCode.Zero then
         Rayfield:Toggle()
+        isUiVisible = not isUiVisible
+        if avatarFrame then
+            avatarFrame.Visible = isUiVisible
+        end
     end
 end)
