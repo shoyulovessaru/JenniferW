@@ -1,0 +1,84 @@
+-- load rayfield
+local Rayfield = loadstring(game('https://sirius.menu/rayfield'))()
+
+local Players = game("Players")
+local UIS = game("UserInputService")
+
+local player = Players.LocalPlayer
+
+local speedValue = 16
+local speedEnabled = false
+
+-- window
+local Window = Rayfield({
+Name = "JenniferW v1.3",
+LoadingTitle = "JenniferW v1.3",
+LoadingSubtitle = "by Shoya",
+ConfigurationSaving = {Enabled = false}
+})
+
+-- tabs
+local MainTab = Window("Main", 4483362458)
+local SettingsTab = Window("Settings", 4483362458)
+local InfoTab = Window("Info", 4483362458)
+
+-- notification
+Rayfield({
+Title = "JenniferW V1.2",
+Content = "Loaded!",
+Duration = 4
+})
+
+-- MAIN TAB
+
+MainTab("Player")
+
+MainTab({
+Name = "WalkSpeed Value",
+PlaceholderText = "Example: 50",
+RemoveTextAfterFocusLost = false,
+Callback = function(text)
+local num = tonumber(text)
+if num then
+speedValue = num
+end
+end
+})
+
+MainTab({
+Name = "Enable WalkSpeed",
+CurrentValue = false,
+Callback = function(state)
+speedEnabled = state
+end
+})
+
+-- enforce speed
+task.spawn(function()
+while true do
+task.wait(0.1)
+if speedEnabled then
+local char = player.Character
+if char and char("Humanoid") then
+char.Humanoid.WalkSpeed = speedValue
+end
+end
+end
+end)
+
+-- SETTINGS TAB
+
+SettingsTab({
+Name = "Unload Hub",
+Callback = function()
+Rayfield()
+end
+})
+
+-- UI TOGGLE
+
+UIS.InputBegan(function(input, gp)
+if input.KeyCode == Enum.KeyCode.Zero then
+Rayfield()
+end
+end)
