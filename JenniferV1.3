@@ -4,17 +4,132 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
 local speedValue = 16
 local speedEnabled = false
+local flyValue = 50
+local flyEnabled = false
 local executeStart = os.clock()
 local isUiVisible = true
 local avatarGui
 local avatarFrame
 local avatarTimer
 local avatarPing
+local flyConnection
+local flyVelocity
+local flyGyro
+
+local flyKeys = {
+    W = false,
+    A = false,
+    S = false,
+    D = false,
+    Space = false,
+    Ctrl = false,
+}
+
+local function stopFly()
+    local char = player.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = false
+    end
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+    if flyVelocity then
+        flyVelocity:Destroy()
+        flyVelocity = nil
+    end
+    if flyGyro then
+        flyGyro:Destroy()
+        flyGyro = nil
+    end
+end
+
+local function startFly()
+    if flyConnection then
+        return
+    end
+
+    local char = player.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then
+        return
+    end
+
+    humanoid.PlatformStand = true
+
+    flyGyro = Instance.new("BodyGyro")
+    flyGyro.P = 9e4
+    flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyGyro.CFrame = hrp.CFrame
+    flyGyro.Parent = hrp
+
+    flyVelocity = Instance.new("BodyVelocity")
+    flyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyVelocity.Velocity = Vector3.zero
+    flyVelocity.Parent = hrp
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not flyEnabled then
+            return
+        end
+
+        local currentChar = player.Character
+        local currentHumanoid = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
+        local currentHrp = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+        if not currentHumanoid or not currentHrp or not flyVelocity or not flyGyro then
+            stopFly()
+            return
+        end
+
+        local cam = workspace.CurrentCamera
+        if not cam then
+            return
+        end
+
+        local moveVector = Vector3.zero
+        if flyKeys.W then
+            moveVector += cam.CFrame.LookVector
+        end
+        if flyKeys.S then
+            moveVector -= cam.CFrame.LookVector
+        end
+        if flyKeys.D then
+            moveVector += cam.CFrame.RightVector
+        end
+        if flyKeys.A then
+            moveVector -= cam.CFrame.RightVector
+        end
+        if flyKeys.Space then
+            moveVector += Vector3.new(0, 1, 0)
+        end
+        if flyKeys.Ctrl then
+            moveVector -= Vector3.new(0, 1, 0)
+        end
+
+        if moveVector.Magnitude > 0 then
+            flyVelocity.Velocity = moveVector.Unit * flyValue
+        else
+            flyVelocity.Velocity = Vector3.zero
+        end
+        flyGyro.CFrame = cam.CFrame
+    end)
+end
+
+player.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    if flyEnabled then
+        stopFly()
+        startFly()
+    end
+end)
 
 -- window
 local Window = Rayfield:CreateWindow({
@@ -63,6 +178,32 @@ MainTab:CreateToggle({
     end,
 })
 
+MainTab:CreateInput({
+    Name = "Fly Speed Value",
+    PlaceholderText = "Example: 50",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then
+            flyValue = num
+        end
+    end,
+})
+
+MainTab:CreateToggle({
+    Name = "Enable Fly",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(state)
+        flyEnabled = state
+        if flyEnabled then
+            startFly()
+        else
+            stopFly()
+        end
+    end,
+})
+
 -- enforce speed
 task.spawn(function()
     while true do
@@ -82,6 +223,8 @@ end)
 SettingsTab:CreateButton({
     Name = "Unload Hub",
     Callback = function()
+        flyEnabled = false
+        stopFly()
         Rayfield:Destroy()
         if avatarGui then
             avatarGui:Destroy()
@@ -286,11 +429,46 @@ UIS.InputBegan:Connect(function(input, gp)
     if gp then
         return
     end
+
+    if input.KeyCode == Enum.KeyCode.W then
+        flyKeys.W = true
+    elseif input.KeyCode == Enum.KeyCode.A then
+        flyKeys.A = true
+    elseif input.KeyCode == Enum.KeyCode.S then
+        flyKeys.S = true
+    elseif input.KeyCode == Enum.KeyCode.D then
+        flyKeys.D = true
+    elseif input.KeyCode == Enum.KeyCode.Space then
+        flyKeys.Space = true
+    elseif input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        flyKeys.Ctrl = true
+    end
+
     if input.KeyCode == Enum.KeyCode.Zero then
         Rayfield:Toggle()
         isUiVisible = not isUiVisible
         if avatarFrame then
             avatarFrame.Visible = isUiVisible
         end
+    end
+end)
+
+UIS.InputEnded:Connect(function(input, gp)
+    if gp then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.W then
+        flyKeys.W = false
+    elseif input.KeyCode == Enum.KeyCode.A then
+        flyKeys.A = false
+    elseif input.KeyCode == Enum.KeyCode.S then
+        flyKeys.S = false
+    elseif input.KeyCode == Enum.KeyCode.D then
+        flyKeys.D = false
+    elseif input.KeyCode == Enum.KeyCode.Space then
+        flyKeys.Space = false
+    elseif input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        flyKeys.Ctrl = false
     end
 end)
