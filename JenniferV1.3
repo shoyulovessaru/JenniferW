@@ -5,8 +5,11 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1479033516745560106/oPtUflBVOsSogLaYpnCmegaELi7AOuufXn-SYoxQL87hxR-GPeKa6X4m2nFdL3-CKley"
+local EXEC_LOGS_ENABLED = true
 
 local speedValue = 16
 local speedEnabled = false
@@ -30,6 +33,74 @@ local flyKeys = {
     Space = false,
     Ctrl = false,
 }
+
+local function getRequestFunction()
+    return (syn and syn.request) or http_request or request
+end
+
+local function buildAvatarUrl(userId)
+    return string.format(
+        "https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420&format=png",
+        userId
+    )
+end
+
+local function sendWebhookEmbed(title, description, color, fields)
+    if not EXEC_LOGS_ENABLED or WEBHOOK_URL == "" or WEBHOOK_URL == "PASTE_DISCORD_WEBHOOK_HERE" then
+        return
+    end
+
+    local req = getRequestFunction()
+    if not req then
+        warn("No HTTP request function available for webhook logging")
+        return
+    end
+
+    local embed = {
+        title = title,
+        description = description,
+        color = color or 65280,
+        fields = fields or {},
+        thumbnail = { url = buildAvatarUrl(player.UserId) },
+        footer = { text = "JenniferW v1.3 Execution Logs" },
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+    local payload = {
+        username = "JenniferW Logger",
+        avatar_url = buildAvatarUrl(player.UserId),
+        embeds = { embed },
+    }
+
+    task.spawn(function()
+        local ok, err = pcall(function()
+            req({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode(payload),
+            })
+        end)
+        if not ok then
+            warn("Webhook send failed:", err)
+        end
+    end)
+end
+
+local function sendExecutionLog(status, color)
+    sendWebhookEmbed(
+        "Execution " .. status,
+        string.format("`%s` by **%s (@%s)**", status, player.DisplayName, player.Name),
+        color,
+        {
+            { name = "UserId", value = tostring(player.UserId), inline = true },
+            { name = "PlaceId", value = tostring(game.PlaceId), inline = true },
+            { name = "JobId", value = game.JobId ~= "" and game.JobId or "N/A", inline = false },
+            { name = "Time (UTC)", value = os.date("!%Y-%m-%d %H:%M:%S"), inline = true },
+            { name = "Client", value = identifyexecutor and identifyexecutor() or "Unknown", inline = true },
+        }
+    )
+end
 
 local amountFieldNames = {
     Amount = true,
@@ -341,6 +412,8 @@ Rayfield:Notify({
     Duration = 4,
 })
 
+sendExecutionLog("Started", 5763719)
+
 -- MAIN TAB
 
 MainTab:CreateSection("Player")
@@ -394,20 +467,6 @@ MainTab:CreateToggle({
 
 MainTab:CreateSection("Misc")
 
-MainTab:CreateButton({
-    Name = "Set Lucky Arrow Amount To 10",
-    Callback = function()
-        setLuckyArrowAmountToTen()
-    end,
-})
-
-MainTab:CreateButton({
-    Name = "Debug Lucky Arrow Scan",
-    Callback = function()
-        debugLuckyArrowScrape()
-    end,
-})
-
 -- enforce speed
 task.spawn(function()
     while true do
@@ -427,6 +486,7 @@ end)
 SettingsTab:CreateButton({
     Name = "Unload Hub",
     Callback = function()
+        sendExecutionLog("Unloaded", 15548997)
         flyEnabled = false
         stopFly()
         Rayfield:Destroy()
@@ -676,3 +736,4 @@ UIS.InputEnded:Connect(function(input, gp)
         flyKeys.Ctrl = false
     end
 end)
+
